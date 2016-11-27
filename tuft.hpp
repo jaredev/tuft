@@ -338,7 +338,7 @@ namespace tuft
         {
             using namespace std;
 
-            // If it is an array then we'll need to loop through each element
+            // If it is an array then we'll need to loop through once for each element
             bool   is_array   = element.is_array();
             size_t loop_count = 1;
 
@@ -358,8 +358,6 @@ namespace tuft
                     rendered.append(remaining_begin, tag_begin); // This is the stuff between tags. Leave it alone.
 
                     auto name = get_tag_name(tag_begin, tag_end, opts);
-                    bool in_array = name == ".";
-
                     bool is_inverted_section = false;
 
                     tag_type type = get_tag_type(tag_begin, tag_end, opts);
@@ -370,21 +368,46 @@ namespace tuft
                         case tag_type::escaped:
                         {
                             bool found = current_elem.count(name) > 0;
+                            bool should_exist = !name.empty() && name != ".";
+
+                            // Variable misses are ignored
+                            if (!found && should_exist)
+                                break;
+
                             json_t elem = found ? current_elem[name] : current_elem;
 
                             string val;
 
-                            if (elem.is_object() || elem.is_array())
+                            switch (elem.type())
                             {
-                                val = elem.dump();
-                            }
-                            else if (elem.is_null())
-                            {
-                                val = "null";
-                            }
-                            else
-                            {
-                                val = elem; // implicit conversion
+                                case json_t::value_t::object:
+                                case json_t::value_t::array:
+                                    val = elem.dump();
+                                    break;
+
+                                case json_t::value_t::null:
+                                    val = "null";
+                                    break;
+
+                                case json_t::value_t::number_float:
+                                    val = to_string(elem.get<double>());
+                                    break;
+
+                                case json_t::value_t::number_integer:
+                                    val = to_string(elem.get<int64_t>());
+                                    break;
+
+                                case json_t::value_t::number_unsigned:
+                                    val = to_string(elem.get<uint64_t>());
+                                    break;
+
+                                case json_t::value_t::boolean:
+                                    val = elem.get<bool>() ? "true" : "false";
+                                    break;
+
+                                case json_t::value_t::string:
+                                    val = elem; // implicit conversion
+                                    break;
                             }
 
                             if (should_escape(tag_begin, tag_end, opts))
