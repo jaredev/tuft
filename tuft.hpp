@@ -408,6 +408,9 @@ namespace tuft
                                 case json_t::value_t::string:
                                     val = elem; // implicit conversion
                                     break;
+
+                                case json_t::value::discarded:
+                                    break;
                             }
 
                             if (should_escape(tag_begin, tag_end, opts))
