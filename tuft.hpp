@@ -364,6 +364,7 @@ namespace tuft
                     switch (type)
                     {
                         case tag_type::variable:
+                        case tag_type::escaped:
                         {
                             bool found = current_elem.count(name) > 0;
                             json_t elem = found ? current_elem[name] : current_elem;
