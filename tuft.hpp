@@ -131,15 +131,29 @@ namespace tuft
 
             tag_begin = e;
             tag_end = e;
-
             tag_begin = search(b, e, opts.delim_open.begin(), opts.delim_open.end());
+
+            string delim_close = opts.delim_close;
+
+            // Special case for triple mustache escape.
+            if (opts.delim_open == "{{" && opts.delim_close == "}}")
+            {
+                string triple_open = "{{{";
+
+                auto triple_begin  = search(b, e, triple_open.begin(), triple_open.end());
+
+                if (tag_begin == triple_begin)
+                    delim_close = "}}}";
+            }
 
             if (tag_begin != e)
             {
-                tag_end = search(next(tag_begin, opts.delim_open.size()), e, opts.delim_close.begin(), opts.delim_close.end());
+                auto after_tag_begin = next(tag_begin, opts.delim_open.size());
+
+                tag_end = search(after_tag_begin, e, delim_close.begin(), delim_close.end());
 
                 if (tag_end != e)
-                    tag_end = next(tag_end, opts.delim_close.size()); // move after end delimiter
+                    tag_end = next(tag_end, delim_close.size()); // move after end delimiter
             }
 
             return (tag_begin != tag_end);

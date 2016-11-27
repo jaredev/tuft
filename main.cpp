@@ -12,7 +12,7 @@ int main()
     using namespace std;
     using json = nlohmann::json;
 
-    auto tmpl = "{{message}}\n{{#list}}\t<b>{{{name}}}</b>\n{{/list}}";
+    auto tmpl = "{{message}}\n{{#list}}\t<b>{{& name}}</b>\n{{/list}}";
     json hash;
 
     hash["message"] = "Current employees:";
