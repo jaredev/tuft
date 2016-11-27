@@ -78,7 +78,7 @@ namespace tuft
         };
 
         const std::string tag_type_symbols("&#^/!");
-        const std::string mustaches("{}");
+        const std::string mustaches("{ }");
 
         /**
          * render_next
@@ -195,10 +195,13 @@ namespace tuft
             auto inside = inside_tag(b, e, opts);
             string name(inside.first, inside.second);
 
-            name.erase(remove_if(name.begin(), name.end(), [&](char x)
-            {
-                return tag_type_symbols.find(x) != string::npos || mustaches.find(x) != string::npos;
-            }));
+            auto name_size = name.length();
+
+            name.erase(remove_if(name.begin(), name.end(), [](const char& x)
+                    {
+                        return (tag_type_symbols.find(x) != string::npos) || (x == '{') || (x == '}');
+                    }),
+                    name.begin());
 
             return name;
         }
