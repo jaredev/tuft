@@ -1,19 +1,38 @@
-//
-// Created by jaredev on 7/14/16.
-//
+/*
+ * Copyright 2016 Charles Jared Jetsel
+ *
+ * MIT License
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ * software and associated documentation files (the "Software"), to deal in the Software
+ * without restriction, including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+ * to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #pragma once
 
 #include <string>
 #include <algorithm>
+#include <exception>
+
+#include "nlohmann/json.hpp"
 
 namespace tuft
 {
     /** @brief  String containing mustache template */
-    using template_t = std::string;
-
+    using string_t   = std::string;
+    using template_t = string_t;
     using json_t     = nlohmann::json;
-
+    
     /**
      * options_t
      *
@@ -21,20 +40,22 @@ namespace tuft
      */
     struct options_t
     {
+        options_t() = default;
+
+        /** @brief Construct options with custom open and close delimiters. */
+        options_t(string_t open, string_t close) : delim_open(open), delim_close(close) {};
+
         /** Opening delimiter. Default is "{{" */
-        std::string delim_open;
+        string_t delim_open = "{{";
 
         /** Closing delimiter. Default is "}}" */
-        std::string delim_close;
+        string_t delim_close = "}}";
     };
-
-    /** @brief  Default delimiters and options for mustache rendering */
-    const options_t default_options{"{{", "}}"};
 
     /** @brief  Exception type that is thrown from tuft */
     struct exception : public std::runtime_error
     {
-        explicit exception(const std::string& what_arg) : std::runtime_error(what_arg) {};
+        explicit exception(const string_t& what_arg) : std::runtime_error(what_arg) {};
         explicit exception(const char* what_arg) : std::runtime_error(what_arg) {};
     };
 
@@ -47,11 +68,12 @@ namespace tuft
      * @param   options Configuration
      * @return
      */
-    std::string render(const template_t & templ, const json_t & hash, const options_t options = default_options);
+    string_t render(const template_t & templ, const json_t & hash, const options_t options = options_t());
 
     namespace detail
     {
-        using iter = std::string::const_iterator;
+        using std::distance, std::next, std::search;
+        using iter = string_t::const_iterator;
 
         /** @brief  Enumeration of symbol characters that represent a tag type */
         enum class tag_type : char
@@ -77,9 +99,9 @@ namespace tuft
             invalid = 0x0F,
         };
 
-        const std::string tag_type_symbols("&#^/!");
-        const std::string mustaches("{ }");
-
+        const string_t tag_type_symbols("&#^/!");
+        const string_t mustaches("{ }");
+        
         /**
          * render_next
          *
@@ -91,20 +113,17 @@ namespace tuft
          *
          * @note  This is a recursive function.
          */
-        void render_next(const template_t& t, const iter& begin, const iter& end, std::string& rendered, const json_t& current_elem, const options_t& opts);
+        void render_next(const template_t& t, const iter& begin, const iter& end, string_t& rendered, const json_t& current_elem, const options_t& opts);
     }
 
-    std::string render(const template_t & t, const json_t & hash, options_t options)
+    string_t render(const template_t & t, const json_t & hash, options_t options)
     {
-        using namespace std;
-
-        string rendered;
+        string_t rendered;
 
         if (t.size() == 0)
             return rendered;
 
         rendered.reserve(t.size()); // approx. tag names are removed so it should be fairly close
-
         detail::render_next(t, t.begin(), t.end(), rendered, hash, options);
 
         return rendered;
@@ -127,18 +146,16 @@ namespace tuft
          */
         bool find_next_tag(const iter& b, const iter& e, iter& tag_begin, iter& tag_end, const options_t& opts)
         {
-            using namespace std;
-
             tag_begin = e;
             tag_end = e;
             tag_begin = search(b, e, opts.delim_open.begin(), opts.delim_open.end());
 
-            string delim_close = opts.delim_close;
+            string_t delim_close = opts.delim_close;
 
             // Special case for triple mustache escape.
             if (opts.delim_open == "{{" && opts.delim_close == "}}")
             {
-                string triple_open = "{{{";
+                string_t triple_open = "{{{";
 
                 auto triple_begin  = search(b, e, triple_open.begin(), triple_open.end());
 
@@ -169,8 +186,8 @@ namespace tuft
          */
         std::pair<iter, iter> inside_tag(const iter& b, const iter& e, const options_t& opts)
         {
-            auto inside_begin = std::next(b,  opts.delim_open.size());  // after  "{{"
-            auto inside_end   = std::next(e, -opts.delim_close.size()); // before "}}"
+            auto inside_begin = next(b,  opts.delim_open.size());  // after  "{{"
+            auto inside_end   = next(e, -opts.delim_close.size()); // before "}}"
 
             return std::make_pair(inside_begin, inside_end);
         }
@@ -185,23 +202,21 @@ namespace tuft
          *
          * @return  variable/section name of tag
          */
-        std::string get_tag_name(const iter& b, const iter& e, const options_t& opts)
+        string_t get_tag_name(const iter& b, const iter& e, const options_t& opts)
         {
-            using namespace std;
-
+            using std::remove_if;
+            
             if (b == e)
                 return "";
 
             auto inside = inside_tag(b, e, opts);
-            string name(inside.first, inside.second);
-
-            auto name_size = name.length();
+            string_t name(inside.first, inside.second);
 
             name.erase(remove_if(name.begin(), name.end(), [](const char& x)
                     {
-                        return (tag_type_symbols.find(x) != string::npos) || (x == '{') || (x == '}');
+                        return (tag_type_symbols.find(x) != string_t::npos) || (x == '{') || (x == '}');
                     }),
-                    name.begin());
+                    name.end());
 
             return name;
         }
@@ -219,15 +234,14 @@ namespace tuft
         tag_type get_tag_type(const iter& b, const iter& e, const options_t& opts)
         {
             auto inside = inside_tag(b, e, opts);
-
-            tag_type tag(tag_type::variable);
+            tag_type tag {tag_type::variable};
 
             if (inside.first == inside.second) // empty tag
                 return tag;
 
             for (auto it = inside.first; it != inside.second; ++it)
             {
-                if (tag_type_symbols.find(*it) != std::string::npos)
+                if (tag_type_symbols.find(*it) != string_t::npos)
                 {
                     tag = static_cast<tag_type>(*it);
                     break;
@@ -247,8 +261,7 @@ namespace tuft
          */
         bool should_escape(const iter& b, const iter& e, const options_t& opts)
         {
-            using namespace std;
-
+            using std::distance;
             bool escape = true;
 
             if (get_tag_type(b, e, opts) == tag_type::escaped)
@@ -258,10 +271,9 @@ namespace tuft
             else if (distance(b, e) >= 6)
             {
                 // Special case for triple mustache. Inner mustaches are ignored if delim is not default.
-                string test(b, e);
-
-                string first_three(b, next(b, 3));
-                string last_three(next(e, -3), e);
+                string_t test(b, e);
+                string_t first_three(b, next(b, 3));
+                string_t last_three(next(e, -3), e);
 
                 if (first_three == "{{{" && last_three == "}}}")
                 {
@@ -277,9 +289,9 @@ namespace tuft
          *
          * @return  String with special html characters escaped.
          */
-        std::string escape_html(const std::string& html)
+        string_t escape_html(const string_t& html)
         {
-            std::string escaped;
+            string_t escaped;
             escaped.reserve(html.size());
 
             for (auto it = html.begin(); it != html.end(); ++it)
@@ -324,22 +336,18 @@ namespace tuft
             }
 
             if (is_inverted)
-            {
                 render_interior = !render_interior;
-            }
 
             if (render_interior)
-            {
                 render_next(t, begin, end, rendered, current_elem, opts);
-            }
         }
 
         void render_next(const template_t& t, const iter& begin, const iter& end, std::string& rendered, const json_t& element, const options_t& opts)
         {
-            using namespace std;
+            using std::to_string, std::search;
 
             // If it is an array then we'll need to loop through once for each element
-            bool   is_array   = element.is_array();
+            const bool is_array = element.is_array();
             size_t loop_count = 1;
 
             if (is_array)
@@ -376,7 +384,7 @@ namespace tuft
 
                             json_t elem = found ? current_elem[name] : current_elem;
 
-                            string val;
+                            string_t val;
 
                             switch (elem.type())
                             {
@@ -409,7 +417,11 @@ namespace tuft
                                     val = elem; // implicit conversion
                                     break;
 
-                                case json_t::value::discarded:
+                                case json_t::value_t::discarded:
+                                    break;
+                                    
+                                default:
+                                    val = elem.dump();
                                     break;
                             }
 
@@ -447,7 +459,7 @@ namespace tuft
                         // Fall through bad tags
                         case tag_type::invalid:
                         default:
-                            throw exception("tuft::render - Unknown tag: '" + string(tag_begin, tag_end));
+                            throw exception("tuft::render - Unknown tag: '" + string_t(tag_begin, tag_end));
                             break;
                     }
 
