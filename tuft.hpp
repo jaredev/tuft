@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <exception>
 
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace tuft
 {
@@ -311,7 +311,7 @@ namespace tuft
             return escaped;
         }
 
-        void render_section(const template_t& t, const iter& begin, const iter& end, std::string& rendered, const json_t& current_elem, const options_t& opts, bool is_inverted)
+        void render_section(const template_t& t, const iter& begin, const iter& end, string_t& rendered, const json_t& current_elem, const options_t& opts, bool is_inverted)
         {
             bool render_interior = false;
 
@@ -342,9 +342,9 @@ namespace tuft
                 render_next(t, begin, end, rendered, current_elem, opts);
         }
 
-        void render_next(const template_t& t, const iter& begin, const iter& end, std::string& rendered, const json_t& element, const options_t& opts)
+        void render_next(const template_t& t, const iter& begin, const iter& end, string_t& rendered, const json_t& element, const options_t& opts)
         {
-            using std::to_string, std::search;
+            using std::to_string;
 
             // If it is an array then we'll need to loop through once for each element
             const bool is_array = element.is_array();
