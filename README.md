@@ -1,9 +1,7 @@
-#TUFT
+# TUFT
 ---
 
 A mustache-like template rendering for modern C++. Tuft is header only and relies upon the [nlohmann/json](https://github.com/nlohmann/json) for the rendering context.
-
-[tuft icon](tuft-icon.png)
 
 To use tuft, just call `tuft::render()` with the template string and json object:
 
@@ -32,9 +30,9 @@ To use tuft, just call `tuft::render()` with the template string and json object
     auto rendered = tuft::render(html_template, hash);
 ```
 
-##Features
+## Features
 
-###Supported
+### Supported
 * Mustache-like interpolation
 * HTML escaping
 * Triple mustache and ampersand
@@ -46,7 +44,7 @@ To use tuft, just call `tuft::render()` with the template string and json object
 * Surroundings and outlying whitespace
 * Pair with padding
 
-###Not supported
+### Not supported
 * Partials
 * Changing custom delimiters in a template
 * Dotted names, parented context
